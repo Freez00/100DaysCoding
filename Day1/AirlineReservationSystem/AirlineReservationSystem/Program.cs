@@ -1,4 +1,6 @@
-﻿internal class Program
+﻿using System.Security.Cryptography.X509Certificates;
+
+internal class Program
 {
     private static void Main(string[] args)
     {
@@ -12,9 +14,11 @@ class Person
     public string Name { get; protected set; }
     public string PassportNumber { get; protected set; }
 
+    public PersonType Type { get; protected set; }
+
     public Person(string name, string passportNumber)
     {
-        if(people.Where(x => x.PassportNumber == passportNumber).FirstOrDefault() != null)
+        if(people.Any(x => x.PassportNumber == passportNumber))
             throw new Exception("Person with this passport number already exists");
         
         Name = name;
@@ -39,6 +43,7 @@ class Passenger : Person
         BookedFlights = new List<Flight>();
         BookedFlights.AddRange(flights);
 
+        Type = PersonType.Person;
     }
 
     public void BookFlight(Flight flight)
@@ -73,6 +78,8 @@ class CrewMember : Person
     {
         AssignedFlights = new List<Flight>();
         AssignedFlights.AddRange(assignedFlights);
+
+        Type = PersonType.CrewMember;
     }
 
     public CrewMember(string name, string passportNumber, CrewRole role, params Flight[] assignedFlights)
@@ -110,20 +117,117 @@ class CrewMember : Person
 
 class Flight
 {
+    private static List<Flight> flights = new List<Flight>();
     public string FlightNumber { get; private set; }
     public List<Passenger> Passengers { get; private set; }
-
     public CrewMember Captain { get; private set; }
-
     public List<CrewMember> Crew { get; private set; }
-
     public int PassengerCapacity { get; private set; }
 
-    // CONTINUE
+    public Flight(string flightNumber, int passengerCapacity, 
+        CrewMember captain, params CrewMember[] crew)
+    {
+        if(flights.Any(x => x.FlightNumber == flightNumber))
+            throw new Exception($"Flight with that number already exists [{flightNumber}]");
+
+        FlightNumber = flightNumber;
+        PassengerCapacity = passengerCapacity;
+        Passengers = new List<Passenger>();
+        
+        Crew = new List<CrewMember>();
+        Crew.AddRange(crew);
+
+        if(captain != null)
+            AssignCaptain(captain);
+
+        flights.Add(this);
+    }
+
+    public Flight(string flightNumber, int passengerCapacity, params CrewMember[] crew)
+        :this(flightNumber, passengerCapacity, null, crew)
+    {
+
+    }
+
+    public Flight(string flightNumber, int passengerCapacity)
+        : this(flightNumber, passengerCapacity, [])
+    {
+
+    }
+
+    public bool AddPassenger(Passenger passenger)
+    {
+        if (Passengers.Count() + 1 > PassengerCapacity)
+            return false;
+
+        if (!Passengers.Contains(passenger))
+            Passengers.Add(passenger);
+
+        return true;
+    }
+
+    public void RemovePassenger(Passenger passenger)
+    {
+        Passengers.Remove(passenger);
+    }
+
+    public bool AssignCaptain(CrewMember captain)
+    {
+        if (captain.Role != CrewRole.Pilot)
+            return false;
+
+        if (!Crew.Contains(captain))
+            Crew.Add(captain);
+
+        Captain = captain;
+
+        
+        return true;
+    }
+
+    public void AssignCrewMember(CrewMember member)
+    {
+        if (!Crew.Contains(member))
+            Crew.Add(member);
+    }
+    public void RemoveCrewMember(CrewMember member)
+    {
+        if (member != Captain)
+            Crew.Remove(member);
+    }
 }
 
+class Account
+{
+    public string Username { get; private set; }
+    private string _password;
+
+    public Person Person { get; private set; }
+
+
+}
+
+static class AccountManager
+{
+    public static Dictionary<string, Account> Accounts { get; private set; } = new Dictionary<string, Account>();
+
+    public static bool AddAccount(Account account)
+    {
+        if (Accounts.Any(x => x.Key == account.Username))
+            return false;
+
+        Accounts.Add(account.Username, account);
+        return true;
+    }
+}
 enum CrewRole
 {
     Pilot,
     FlightAttendant
+}
+
+enum PersonType
+{
+    Person,
+    CrewMember
 }
