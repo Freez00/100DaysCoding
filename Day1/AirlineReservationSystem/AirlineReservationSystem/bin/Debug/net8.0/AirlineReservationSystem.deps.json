@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "AirlineReservationSystem/1.0.0": {
+        "runtime": {
+          "AirlineReservationSystem.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "AirlineReservationSystem/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
