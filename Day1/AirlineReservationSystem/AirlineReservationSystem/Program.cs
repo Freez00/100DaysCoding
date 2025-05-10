@@ -3,7 +3,81 @@ internal class Program
 {
     private static void Main(string[] args)
     {
+        SeedApp();
+        FlightManager.ListAvailableFlights();
+    }
 
+    private static void SeedApp()
+    {
+        // === CREW MEMBERS ===
+        var captains = new List<CrewMember>
+    {
+        new CrewMember("Daniel Grant", "C001", CrewRole.Pilot),
+        new CrewMember("Elena Novak", "C002", CrewRole.Pilot),
+        new CrewMember("Thomas Becker", "C003", CrewRole.Pilot),
+    };
+
+        var crewMembers = new List<CrewMember>
+    {
+        new CrewMember("Sara Jensen", "C004", CrewRole.FlightAttendant),
+        new CrewMember("Liam Carter", "C005", CrewRole.FlightAttendant),
+        new CrewMember("Natalie Brooks", "C006", CrewRole.FlightAttendant),
+        new CrewMember("Victor Schmidt", "C007", CrewRole.FlightAttendant),
+        new CrewMember("Anna Petrova", "C008", CrewRole.FlightAttendant),
+    };
+
+        // === FLIGHTS ===
+        var flight1 = new Flight("FL100", 4, captains[0], crewMembers[0], crewMembers[1]);
+        var flight2 = new Flight("FL200", 3, captains[1], crewMembers[2], crewMembers[3]);
+        var flight3 = new Flight("FL300", 5, captains[2], crewMembers[4]);
+        var flight4 = new Flight("FL400", 2, captains[0], crewMembers[2]);
+        var flight5 = new Flight("FL500", 6, captains[1], crewMembers[0], crewMembers[3]);
+
+        var allFlights = new List<Flight> { flight1, flight2, flight3, flight4, flight5 };
+
+        // === ASSIGN FLIGHTS TO CREW ===
+        foreach (var crew in captains.Concat(crewMembers))
+        {
+            foreach (var flight in allFlights.Where(f => f.Crew.Contains(crew)))
+            {
+                crew.AssignFlight(flight);
+            }
+        }
+
+        // === PASSENGERS ===
+        var passengers = new List<Passenger>
+    {
+        new Passenger("Michael Adams", "P100"),
+        new Passenger("Julia Meyer", "P101"),
+        new Passenger("Oscar Lind", "P102"),
+        new Passenger("Chloe Park", "P103"),
+        new Passenger("Ivan Dimitrov", "P104"),
+        new Passenger("Zara Ahmed", "P105"),
+        new Passenger("Lucas Marin", "P106"),
+        new Passenger("Sofia Costa", "P107"),
+    };
+
+        // === ASSIGN PASSENGERS TO FLIGHTS ===
+        passengers[0].BookFlight(flight1); flight1.AddPassenger(passengers[0]);
+        passengers[1].BookFlight(flight1); flight1.AddPassenger(passengers[1]);
+        passengers[2].BookFlight(flight2); flight2.AddPassenger(passengers[2]);
+        passengers[3].BookFlight(flight3); flight3.AddPassenger(passengers[3]);
+        passengers[4].BookFlight(flight4); flight4.AddPassenger(passengers[4]);
+        passengers[5].BookFlight(flight5); flight5.AddPassenger(passengers[5]);
+        passengers[6].BookFlight(flight5); flight5.AddPassenger(passengers[6]);
+        passengers[7].BookFlight(flight2); flight2.AddPassenger(passengers[7]);
+
+        // === ACCOUNTS ===
+        foreach (var passenger in passengers)
+        {
+            AccountManager.RegisterAccount(passenger.Name.ToLower().Split()[0], "pass123", passenger);
+        }
+
+        foreach (var crew in captains.Concat(crewMembers))
+        {
+            var uname = crew.Name.ToLower().Split()[0];
+            AccountManager.RegisterAccount(uname, "crewpass", crew);
+        }
     }
 }
 
@@ -12,8 +86,6 @@ class Person
     private static List<Person> people = new List<Person>();
     public string Name { get; protected set; }
     public string PassportNumber { get; protected set; }
-
-    public PersonType Type { get; protected set; }
 
     public Person(string name, string passportNumber)
     {
@@ -24,6 +96,11 @@ class Person
         PassportNumber = passportNumber;
         
         people.Add(this);
+    }
+
+    public Person()
+    {
+
     }
 
     public override string ToString()
@@ -41,8 +118,6 @@ class Passenger : Person
     {
         BookedFlights = new List<Flight>();
         BookedFlights.AddRange(flights);
-
-        Type = PersonType.Person;
     }
 
     public void BookFlight(Flight flight)
@@ -77,8 +152,6 @@ class CrewMember : Person
     {
         AssignedFlights = new List<Flight>();
         AssignedFlights.AddRange(assignedFlights);
-
-        Type = PersonType.CrewMember;
     }
 
     public CrewMember(string name, string passportNumber, CrewRole role, params Flight[] assignedFlights)
@@ -194,6 +267,16 @@ class Flight
         if (member != Captain)
             Crew.Remove(member);
     }
+
+    public static List<Flight> GetFlights()
+    {
+        return flights;
+    }
+
+    public override string ToString()
+    {
+        return $"[{FlightNumber}] cap.{Captain} --- Available seats: {PassengerCapacity - Passengers.Count()}";
+    }
 }
 
 class Account
@@ -203,30 +286,100 @@ class Account
 
     public Person Person { get; private set; }
 
+    public Account(string username, string password)
+    {
+        Username = username;
+        _password = password;
+        Person = new Person();
+    }
+    public Account(string username, string password, Person person)
+    {
+        Username = username;
+        _password = password;
+        Person = person;
+    }
 
+    public void AssignPerson(Person person)
+    {
+        Person = person;
+    }
+
+    public bool VerifyPassword(string password)
+    {
+        return _password == password;
+    }
 }
 
 static class AccountManager
 {
     public static Dictionary<string, Account> Accounts { get; private set; } = new Dictionary<string, Account>();
 
-    public static bool AddAccount(Account account)
+    public static bool RegisterAccount(Account acc)
     {
-        if (Accounts.Any(x => x.Key == account.Username))
+        if(Accounts.Any(x => x.Key == acc.Username))
             return false;
 
-        Accounts.Add(account.Username, account);
+        Accounts.Add(acc.Username, acc);
         return true;
     }
+
+    public static Account Authenticate(string username, string password)
+    {
+        Account account = getAccountByUsername(username);
+        if ( account != null && account.VerifyPassword(password))
+            return account;
+
+        return null;
+    }
+
+    public static bool RegisterAccount(string username, string password, Person person)
+    {
+        Account acc = new Account(username, password, person);
+        return RegisterAccount(acc);
+    }
+
+    public static bool RegisterAccount(string username, string password)
+    {
+        Account acc = new Account(username, password);
+        return RegisterAccount(acc);
+    }
+
+    private static Account getAccountByUsername(string username)
+    {
+        Account account;
+        if (Accounts.TryGetValue(username, out account))
+            return account;
+
+        return null;
+    }
 }
+
+static class FlightManager
+{
+    public static List<Flight> Flights { get { return Flight.GetFlights(); }}
+
+    public static List<Flight> ListAvailableFlights()
+    {
+        var flights = Flights.Where(x => x.PassengerCapacity - x.Passengers.Count() != 0).ToList();
+
+        foreach(var f in flights)
+        {
+            Console.WriteLine("\n"+f);
+            Console.WriteLine("Passengers on board:");
+            foreach (var p in f.Passengers)
+                Console.WriteLine("\t"+p);
+            Console.WriteLine("Crew:");
+            foreach (var c in f.Crew)
+                Console.WriteLine("\t" + c);
+            Console.WriteLine();
+        }
+
+        return flights;
+    }
+}
+
 enum CrewRole
 {
     Pilot,
     FlightAttendant
-}
-
-enum PersonType
-{
-    Person,
-    CrewMember
 }
