@@ -3,8 +3,34 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        SeedApp();
-        FlightManager.ListAvailableFlights();
+        //SeedApp();
+        //FlightManager.ListAvailableFlights();
+
+        Menu menu1 = new Menu("hello");
+        menu1.AddOption("option 1", new ActionMenu(sayHey));
+        menu1.AddOption("option 2", new ActionMenu(sayHey2));
+
+        Menu menu2 = new Menu("authentication screen");
+
+        menu2.AddOption("login", new ActionMenu((object? ctx) => { Console.WriteLine("cant login" + ctx); }));
+        menu2.AddOption("register", new ActionMenu((object? _) => { Console.WriteLine("service unavailable atm"); }));
+        menu2.AddOption("menu1", new SubMenu(menu1));
+
+        menu1.AddOption("option 3", new SubMenu(menu2));
+
+        menu1.Run();
+
+
+    }
+
+    private static void sayHey(object? _)
+    {
+        Console.WriteLine("Hey");
+    }
+
+    private static void sayHey2(object? _)
+    {
+        Console.WriteLine("Heyyyy");
     }
 
     private static void SeedApp()
@@ -375,6 +401,120 @@ static class FlightManager
         }
 
         return flights;
+    }
+}
+
+class Menu 
+{
+    private string? _title;
+    private Dictionary<string, IMenuItem> _options;
+
+    private int selectedIndex = 0;
+
+    public Menu(Dictionary<string, IMenuItem> options, string? title = null)
+    {
+        _title = title;
+        _options = options;
+    }
+
+    public Menu(string? title = null)
+    {
+        _title = title;
+        _options = new Dictionary<string, IMenuItem>();
+    }
+
+    public void AddOption(string label, IMenuItem action)
+    {
+        _options.Add(label, action);
+    }
+
+    public void Run()
+    {
+        while (true)
+        {
+            DisplayOptions();
+            TakeInput();
+        }
+    }
+
+    private void DisplayOptions()
+    {
+        Console.Clear();
+        Console.WriteLine(_title);
+        for (int i = 0; i < _options.Count; i++)
+        {
+            if (i == selectedIndex)
+            {
+                Console.ForegroundColor = ConsoleColor.Black;
+                Console.BackgroundColor = ConsoleColor.Gray;
+                Console.WriteLine(">" + _options.ElementAt(i).Key);
+                Console.ResetColor();
+            }
+            else
+            {
+                Console.WriteLine(_options.ElementAt(i).Key);
+            }
+            
+        }
+    }
+
+    private void TakeInput()
+    {
+        ConsoleKey key = Console.ReadKey().Key;
+
+        switch (key)
+        {
+            case ConsoleKey.UpArrow:
+            case ConsoleKey.W:
+                selectedIndex = selectedIndex == 0 ? _options.Count - 1 : selectedIndex - 1;
+                break;
+
+            case ConsoleKey.DownArrow:
+            case ConsoleKey.S:
+                selectedIndex = selectedIndex == _options.Count - 1 ? 0 : selectedIndex + 1;
+                break;
+
+            case ConsoleKey.Enter:
+            case ConsoleKey.Spacebar:
+                _options.ElementAt(selectedIndex).Value.Run();
+                Console.ReadLine();
+                break;
+        }
+    }
+}
+
+interface IMenuItem
+{
+    void Run(object? context = null);
+}
+
+class SubMenu : IMenuItem
+{
+    private readonly Menu _submenu;
+
+    public SubMenu(Menu submenu)
+    {
+        _submenu = submenu;
+    }
+
+    public void Run(object? context = null)
+    {
+        _submenu.Run();
+    }
+}
+
+class ActionMenu : IMenuItem
+{
+    private readonly Action<object?> _action;
+
+    public ActionMenu(Action<object?> action)
+    {
+        _action = action;
+    }
+
+    public void Run(object? context = null)
+    {
+        _action(context);
     }
 }
 
