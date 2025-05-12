@@ -1,36 +1,8 @@
-﻿
-internal class Program
+﻿internal class Program
 {
     private static void Main(string[] args)
     {
-        //SeedApp();
-        //FlightManager.ListAvailableFlights();
-
-        Menu menu1 = new Menu("hello");
-        menu1.AddOption("option 1", new ActionMenu(sayHey));
-        menu1.AddOption("option 2", new ActionMenu(sayHey2));
-
-        Menu menu2 = new Menu("authentication screen");
-
-        menu2.AddOption("login", new ActionMenu((object? ctx) => { Console.WriteLine("cant login" + ctx); }));
-        menu2.AddOption("register", new ActionMenu((object? _) => { Console.WriteLine("service unavailable atm"); }));
-        menu2.AddOption("menu1", new SubMenu(menu1));
-
-        menu1.AddOption("option 3", new SubMenu(menu2));
-
-        menu1.Run();
-
-
-    }
-
-    private static void sayHey(object? _)
-    {
-        Console.WriteLine("Hey");
-    }
-
-    private static void sayHey2(object? _)
-    {
-        Console.WriteLine("Heyyyy");
+        AirlineReservationSystem.Initialize();
     }
 
     private static void SeedApp()
@@ -334,12 +306,17 @@ class Account
     {
         return _password == password;
     }
+
+    public override string ToString()
+    {
+        return $"Account - {Username}, Person - {Person}";
+    }
 }
 
 static class AccountManager
 {
     public static Dictionary<string, Account> Accounts { get; private set; } = new Dictionary<string, Account>();
-
+    public static Account currentSession { get; private set; } = null;
     public static bool RegisterAccount(Account acc)
     {
         if(Accounts.Any(x => x.Key == acc.Username))
@@ -356,6 +333,17 @@ static class AccountManager
             return account;
 
         return null;
+    }
+
+    public static bool AuthenticateAndStartSession(string username, string password)
+    {
+        var acc = Authenticate(username, password);
+
+        if (acc == null)
+            return false;
+
+        currentSession = acc;
+        return true;
     }
 
     public static bool RegisterAccount(string username, string password, Person person)
@@ -432,6 +420,7 @@ class Menu
     {
         while (true)
         {
+            Console.CursorVisible = false;
             DisplayOptions();
             TakeInput();
         }
@@ -476,8 +465,8 @@ class Menu
 
             case ConsoleKey.Enter:
             case ConsoleKey.Spacebar:
+                Console.CursorVisible = true;
                 _options.ElementAt(selectedIndex).Value.Run();
-                Console.ReadLine();
                 break;
         }
     }
@@ -485,7 +474,7 @@ class Menu
 
 interface IMenuItem
 {
-    void Run(object? context = null);
+    void Run(object? session = null, object? context = null);
 }
 
 class SubMenu : IMenuItem
@@ -497,7 +486,7 @@ class SubMenu : IMenuItem
         _submenu = submenu;
     }
 
-    public void Run(object? context = null)
+    public void Run(object? session = null, object? context = null)
     {
         _submenu.Run();
     }
@@ -505,16 +494,94 @@ class SubMenu : IMenuItem
 
 class ActionMenu : IMenuItem
 {
-    private readonly Action<object?> _action;
+    private readonly Action<object?, object?> _action;
 
-    public ActionMenu(Action<object?> action)
+    public ActionMenu(Action<object?, object?> action)
     {
         _action = action;
     }
 
-    public void Run(object? context = null)
+    public void Run(object? session = null,  object? context = null)
     {
-        _action(context);
+        _action(session, context);
+    }
+}
+
+static class AirlineReservationSystem
+{
+    public static void Initialize()
+    {
+        Menu loginScreen = new Menu("Welcome please select auth option");
+        loginScreen.AddOption("Login", new ActionMenu((object? _, object? __) => Login()));
+        loginScreen.AddOption("Register", new ActionMenu((object? _, object? __) => Register()));
+        loginScreen.Run();
+    }
+
+    static void Login()
+    {
+        Console.Clear();
+        string username, password;
+        TakeVerifiedInput(out username, out password);
+        var result = AccountManager.AuthenticateAndStartSession(username, password);
+        if (!result)
+        {
+            Console.WriteLine("Account with that username/password does not exist. \n" +
+                "Press any key to try again or ',' to go back to menu...");
+            var key = Console.ReadKey(true).Key;
+            if(key != ConsoleKey.OemComma)
+                Login();
+        }
+        else
+        {
+            Console.WriteLine("Hooray succesfully logged in! Current session - {0}", AccountManager.currentSession);
+            Console.ReadLine();
+            //LoadMainScreen();
+        }
+    }
+
+    static void Register()
+    {
+        Console.Clear();
+        string username, password;
+        TakeVerifiedInput(out username, out password);
+        string name = ReadString("Enter Name:");
+        string passportNumber = ReadString("Enter Passport Number:");
+        Passenger passenger = new Passenger(name, passportNumber);
+
+        var result = AccountManager.RegisterAccount(username, password, passenger);
+
+        if (!result)
+        {
+            Console.WriteLine("Account with that username already exists.\n" +
+                "Press any key to try again or esc to go back to menu...");
+            var key = Console.ReadKey().Key;
+            if (key != ConsoleKey.Escape)
+                Register();
+        }
+        else
+        {
+            AccountManager.AuthenticateAndStartSession(username, password);
+            Console.WriteLine("Hooray succesfully registered! Current session - {0}", AccountManager.currentSession);
+            Console.ReadLine();
+            //LoadMainScreen();
+        }
+    }
+
+    private static void TakeVerifiedInput(out string username, out string password)
+    {
+        username = ReadString("Enter Username:");
+        password = ReadString("Enter Password:");
+    }
+
+    private static string ReadString(string title = "")
+    {
+        Console.WriteLine(title);
+        string s;
+        do
+        {
+            s = Console.ReadLine();
+        } while (string.IsNullOrWhiteSpace(s));
+        return s;
     }
 }
 
