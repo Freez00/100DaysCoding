@@ -509,12 +509,25 @@ class ActionMenu : IMenuItem
 
 static class AirlineReservationSystem
 {
+    private static Menu loginScreen, mainScreen;
     public static void Initialize()
     {
-        Menu loginScreen = new Menu("Welcome please select auth option");
+        loginScreen = new Menu("Welcome please select auth option");
         loginScreen.AddOption("Login", new ActionMenu((object? _, object? __) => Login()));
         loginScreen.AddOption("Register", new ActionMenu((object? _, object? __) => Register()));
+
+        
+
         loginScreen.Run();
+
+        
+    }
+
+    private static void LoadMainMenu()
+    {
+        mainScreen = new Menu($"Hello, {AccountManager.currentSession?.Person.Name}");
+        mainScreen.AddOption("View booked flights", new ActionMenu((object? _, object? __)
+            => { Console.WriteLine("Fliiiiightsss"); Console.ReadLine(); }));
     }
 
     static void Login()
@@ -533,9 +546,7 @@ static class AirlineReservationSystem
         }
         else
         {
-            Console.WriteLine("Hooray succesfully logged in! Current session - {0}", AccountManager.currentSession);
-            Console.ReadLine();
-            //LoadMainScreen();
+            mainScreen.Run();
         }
     }
 
@@ -561,9 +572,7 @@ static class AirlineReservationSystem
         else
         {
             AccountManager.AuthenticateAndStartSession(username, password);
-            Console.WriteLine("Hooray succesfully registered! Current session - {0}", AccountManager.currentSession);
-            Console.ReadLine();
-            //LoadMainScreen();
+            mainScreen.Run();
         }
     }
 
